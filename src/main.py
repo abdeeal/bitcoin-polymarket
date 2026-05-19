@@ -138,11 +138,24 @@ async def _run_prediction_loop(components: dict, stop_event: asyncio.Event) -> N
 
     rest_client = BinanceRESTClient()  # public endpoints, no API key needed
     feature_engine = FeatureEngine(ring_buffer)
-    model = EnsembleModel()  # untrained -> uses heuristic fallback
     signal_gen = SignalGenerator()
     paper_trader = PaperTrader(seed=42)
     poly_client = PolymarketClient(paper_mode=True)
     bet_logger = BetLogger(paper_mode=True)
+
+    # ── Try to load trained models ──
+    model_dir = "models/latest"
+    try:
+        import os
+        if os.path.exists(os.path.join(model_dir, "ensemble_metadata.json")):
+            model = EnsembleModel.load(model_dir)
+            logger.info("model_loaded_from_disk", path=model_dir, fitted=model.is_fitted)
+        else:
+            model = EnsembleModel()  # untrained -> uses heuristic fallback
+            logger.info("model_no_weights_found", path=model_dir, note="using heuristic fallback")
+    except Exception as e:
+        model = EnsembleModel()
+        logger.warning("model_load_failed", error=str(e), note="using heuristic fallback")
 
     # ── Step 1: Backfill ring buffer ──
     logger.info("backfill_starting")
@@ -372,15 +385,8 @@ async def _run_prediction_loop(components: dict, stop_event: asyncio.Event) -> N
                 prob = prediction_detail['prob']
             else:
                 prob = _heuristic_prob(numeric_features)
-                # Build fallback detail so bet_details table still gets populated
-                prediction_detail = {
-                    'prob': prob,
-                    'prob_lgbm': None,
-                    'prob_xgb': None,
-                    'prob_lstm': None,
-                    'top_features_pro': [],
-                    'top_features_contra': [],
-                }
+                # Build heuristic detail with actual feature contributions
+                prediction_detail = _heuristic_detail(numeric_features, prob)
         except Exception as e:
             logger.warning("model_inference_failed", cycle=cycle, error=str(e))
             prob = 0.5
@@ -592,6 +598,101 @@ def _warn_live_mode() -> None:
     # 3-second pause to notice the warning
     import time
     time.sleep(3)
+
+
+def _heuristic_detail(features: dict, prob: float) -> dict:
+    """
+    Build a prediction detail dict from the heuristic formula.
+    Decomposes the heuristic into per-feature contributions so users
+    can see what drove the prediction even without trained ML models.
+    """
+    import math
+
+    direction_up = prob >= 0.5
+
+    # Extract the same features used by _heuristic_prob
+    ret_1 = features.get('return_1m', 0.0)
+    ret_5 = features.get('return_5m', 0.0)
+    ret_10 = features.get('return_10m', 0.0)
+    ret_20 = features.get('return_20m', 0.0)
+    taker_buy_ratio = features.get('taker_buy_ratio', 0.5)
+    vol_delta_5 = features.get('volume_delta_ratio_5', 0.0)
+    vol_5 = features.get('realized_vol_5', 0.001)
+
+    # Compute each feature's individual contribution to the z-score
+    # (same weights as in _heuristic_prob)
+    contributions = [
+        {
+            'name': 'return_1m',
+            'importance': round(abs(0.15 * (ret_1 / max(vol_5, 1e-6)) * 0.6), 4),
+            'value': round(ret_1, 6),
+            'score': 0.15 * (ret_1 / max(vol_5, 1e-6)) * 0.6,
+        },
+        {
+            'name': 'return_5m',
+            'importance': round(abs(0.30 * (ret_5 / max(vol_5, 1e-6)) * 0.6), 4),
+            'value': round(ret_5, 6),
+            'score': 0.30 * (ret_5 / max(vol_5, 1e-6)) * 0.6,
+        },
+        {
+            'name': 'return_10m',
+            'importance': round(abs(0.25 * (ret_10 / max(vol_5, 1e-6)) * 0.6), 4),
+            'value': round(ret_10, 6),
+            'score': 0.25 * (ret_10 / max(vol_5, 1e-6)) * 0.6,
+        },
+        {
+            'name': 'return_20m',
+            'importance': round(abs(0.15 * (ret_20 / max(vol_5, 1e-6)) * 0.6), 4),
+            'value': round(ret_20, 6),
+            'score': 0.15 * (ret_20 / max(vol_5, 1e-6)) * 0.6,
+        },
+        {
+            'name': 'taker_buy_ratio',
+            'importance': round(abs((taker_buy_ratio - 0.5) * 4.0 * 0.4), 4),
+            'value': round(taker_buy_ratio, 6),
+            'score': (taker_buy_ratio - 0.5) * 4.0 * 0.4,
+        },
+        {
+            'name': 'volume_delta_ratio_5',
+            'importance': round(abs(vol_delta_5 * 2.0 * 0.4), 4),
+            'value': round(vol_delta_5, 6),
+            'score': vol_delta_5 * 2.0 * 0.4,
+        },
+        {
+            'name': 'realized_vol_5',
+            'importance': round(vol_5 * 100, 4),  # scale for visibility
+            'value': round(vol_5, 6),
+            'score': 0,  # dampening factor, not directional
+        },
+    ]
+
+    # Sort by importance descending
+    contributions.sort(key=lambda x: x['importance'], reverse=True)
+
+    # Classify as pro/contra based on whether the score aligns with predicted direction
+    pro = []
+    contra = []
+    for c in contributions:
+        entry = {'name': c['name'], 'importance': c['importance'], 'value': c['value']}
+        score = c['score']
+        if direction_up:
+            is_pro = score >= 0
+        else:
+            is_pro = score <= 0
+
+        if is_pro:
+            pro.append(entry)
+        else:
+            contra.append(entry)
+
+    return {
+        'prob': prob,
+        'prob_lgbm': None,
+        'prob_xgb': None,
+        'prob_lstm': None,
+        'top_features_pro': pro[:10],
+        'top_features_contra': contra[:10],
+    }
 
 
 def _heuristic_prob(features: dict) -> float:

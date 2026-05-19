@@ -301,7 +301,9 @@ class LSTMModel:
             torch.save(self._model.state_dict(), str(path / 'lstm_model.pt'))
         elif self._backend == 'tensorflow' and self._model is not None:
             self._model.save(str(path / 'lstm_model.keras'))
-        np.savez(path / 'lstm_scaler.npz', mean=self._scaler_mean or [], std=self._scaler_std or [])
+        np.savez(path / 'lstm_scaler.npz',
+                 mean=self._scaler_mean if self._scaler_mean is not None else np.array([]),
+                 std=self._scaler_std if self._scaler_std is not None else np.array([]))
         with open(path / 'lstm_metadata.json', 'w') as f:
             json.dump(self._train_metadata, f, indent=2)
         logger.info("lstm_saved", path=str(path))
