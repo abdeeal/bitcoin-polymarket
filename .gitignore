@@ -13,13 +13,15 @@ yarn-debug.log*
 yarn-error.log*
 
 # ── 2. Data & Models (Do not push heavy or generated data) ────────────────────
-data/
-models/
-artifacts/
+/data/
+/models/
+/artifacts/
 *.npy
 *.csv
 *.parquet
 *.json
+!package.json
+!package-lock.json
 # Keep config json or small metadata if explicitly tracked, but ignore model weights
 *.txt
 !requirements.txt
