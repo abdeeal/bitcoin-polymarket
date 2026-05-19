@@ -1,0 +1,57 @@
+# ==============================================================================
+# BTC Prediction Bot (Quant Opus) — Gitignore
+# ==============================================================================
+
+# ── 1. Environments & Dependencies ────────────────────────────────────────────
+venv/
+env/
+.env
+.venv
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── 2. Data & Models (Do not push heavy or generated data) ────────────────────
+data/
+models/
+artifacts/
+*.npy
+*.csv
+*.parquet
+*.json
+# Keep config json or small metadata if explicitly tracked, but ignore model weights
+*.txt
+!requirements.txt
+
+# ── 3. Frontend Build (Vite) ──────────────────────────────────────────────────
+frontend/dist/
+frontend/dist-ssr/
+frontend/.eslintcache
+frontend/coverage/
+
+# ── 4. Python Cache & Logs ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+logs/
+
+# ── 5. OS & IDE Specific ──────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── 6. Jupyter Notebooks ──────────────────────────────────────────────────────
+.ipynb_checkpoints/

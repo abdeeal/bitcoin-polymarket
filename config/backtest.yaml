@@ -1,0 +1,39 @@
+# =============================================================================
+# BTC Prediction Bot — Backtest Configuration
+# =============================================================================
+
+mode: backtest
+paper_mode: true
+
+# Capital
+starting_capital: 10.00
+hard_stop_balance: 5.00
+
+# Data
+ring_buffer_capacity: 600
+backfill_candles: 600
+
+# Model
+model:
+  path: "models/latest/"
+  load_timeout: 30
+
+# Signal thresholds
+signal:
+  threshold_up_normal: 0.72
+  threshold_down_normal: 0.28
+  threshold_up_high: 0.82
+  threshold_down_high: 0.18
+
+# Cooling down
+cooling_down:
+  consecutive_losses_trigger: 2
+  duration_seconds: 1800
+
+# Backtest specific
+backtest:
+  start_date: "2025-11-01"
+  end_date: "2026-05-01"
+  initial_capital: 10.00
+  polymarket_fee: 0.02
+  slippage_bps: 5

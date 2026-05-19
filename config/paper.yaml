@@ -1,0 +1,66 @@
+# =============================================================================
+# BTC Prediction Bot — Paper Trading Configuration
+# =============================================================================
+
+mode: paper
+paper_mode: true
+
+# Capital
+starting_capital: 10.00
+hard_stop_balance: 5.00
+
+# Data
+ring_buffer_capacity: 600
+backfill_candles: 600
+
+# Binance
+binance:
+  ws_base: "wss://stream.binance.com:9443/stream"
+  spot_base: "https://api.binance.com"
+  futures_base: "https://fapi.binance.com"
+
+# Derivatives
+deribit:
+  base_url: "https://www.deribit.com/api/v2"
+  poll_interval: 60
+
+coinglass:
+  base_url: "https://open-api.coinglass.com/public/v2"
+  poll_interval: 60
+
+# Polling
+derivatives_poll_interval: 300
+
+# Model
+model:
+  path: "models/latest/"
+  load_timeout: 30
+
+# Signal thresholds
+signal:
+  threshold_up_normal: 0.72
+  threshold_down_normal: 0.28
+  threshold_up_high: 0.82
+  threshold_down_high: 0.18
+
+# Cooling down
+cooling_down:
+  consecutive_losses_trigger: 2
+  duration_seconds: 1800
+
+# Persistence
+persistence:
+  max_batch_size: 50
+  flush_timeout: 1.0
+  queue_max_size: 10000
+
+# Dashboard
+dashboard:
+  api_port: 8000
+  ws_broadcast_interval: 5
+
+# Alerting
+alerting:
+  enabled: true
+  channels:
+    - telegram

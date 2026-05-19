@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # TimescaleDB — Async persistence layer (never read during inference)
+  # ==========================================================================
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: btc_timescaledb
+    restart: unless-stopped
+    ports:
+      - "${TIMESCALE_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${TIMESCALE_DB:-btc_prediction}
+      POSTGRES_USER: ${TIMESCALE_USER:-btcbot}
+      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD:-btcbot_secret}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TIMESCALE_USER:-btcbot} -d ${TIMESCALE_DB:-btc_prediction}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - btcbot_net
+
+  # ==========================================================================
+  # Redis — Bot state, bracket, consecutive loss count, latest feature vector
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: btc_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - btcbot_net
+
+  # ==========================================================================
+  # Dashboard API — FastAPI backend (9 REST + 1 WebSocket)
+  # ==========================================================================
+  dashboard-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: btc_dashboard_api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: 5432
+      TIMESCALE_DB: ${TIMESCALE_DB:-btc_prediction}
+      TIMESCALE_USER: ${TIMESCALE_USER:-btcbot}
+      TIMESCALE_PASSWORD: ${TIMESCALE_PASSWORD:-btcbot_secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - btcbot_net
+
+  # ==========================================================================
+  # Dashboard Frontend — React 18 + Recharts (dev server or nginx)
+  # ==========================================================================
+  dashboard-ui:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: btc_dashboard_ui
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      VITE_API_URL: http://dashboard-api:8000
+    depends_on:
+      - dashboard-api
+    networks:
+      - btcbot_net
+
+volumes:
+  timescaledb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  btcbot_net:
+    driver: bridge
