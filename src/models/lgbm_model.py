@@ -192,7 +192,23 @@ class LGBMModel:
             instance._feature_names = meta.get('feature_names', [])
             instance._train_metadata = meta.get('train_metadata', {})
 
-        logger.info("lgbm_loaded", path=str(path))
+        # Set n_features so predict_proba doesn't reject input shape
+        n_features = booster.num_feature()
+        instance._model._n_features = n_features
+        instance._model._n_features_in = n_features
+        instance._model._classes = np.array([0, 1])
+        instance._model._n_classes_ = 2
+        # Set up label encoder for predict_proba
+        try:
+            instance._model._le = lgb.basic._LGBMLabelEncoder()
+            instance._model._le.fit([0, 1])
+        except AttributeError:
+            # Fallback for different LightGBM versions
+            from sklearn.preprocessing import LabelEncoder
+            instance._model._le = LabelEncoder()
+            instance._model._le.fit([0, 1])
+
+        logger.info("lgbm_loaded", path=str(path), n_features=n_features)
         return instance
 
     @property
