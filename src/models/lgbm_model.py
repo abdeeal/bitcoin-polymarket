@@ -134,7 +134,10 @@ class LGBMModel:
         """Return P(UP) for each sample. Shape: (n_samples,)."""
         if self._model is None:
             raise RuntimeError("Model not trained or loaded")
-        probs = self._model.predict_proba(X)
+        import warnings
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="X does not have valid feature names")
+            probs = self._model.predict_proba(X)
         return probs[:, 1]
 
     def predict(self, X: np.ndarray) -> np.ndarray:
