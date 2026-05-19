@@ -372,6 +372,15 @@ async def _run_prediction_loop(components: dict, stop_event: asyncio.Event) -> N
                 prob = prediction_detail['prob']
             else:
                 prob = _heuristic_prob(numeric_features)
+                # Build fallback detail so bet_details table still gets populated
+                prediction_detail = {
+                    'prob': prob,
+                    'prob_lgbm': None,
+                    'prob_xgb': None,
+                    'prob_lstm': None,
+                    'top_features_pro': [],
+                    'top_features_contra': [],
+                }
         except Exception as e:
             logger.warning("model_inference_failed", cycle=cycle, error=str(e))
             prob = 0.5
