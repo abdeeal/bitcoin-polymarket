@@ -3,12 +3,12 @@ Signal Generator — Threshold logic and signal tiering.
 
 PRD 7.1: Two-tier confidence system.
 
-Threshold Design:
+Threshold Design (tuned for BTC 5-min market efficiency):
   ┌────────────────────────────────────────────────────────────────┐
-  │  P(UP) >= 0.82 → BET_UP_HIGH_CONF   ($2 bet, ~1-2% candles) │
-  │  P(UP) >= 0.72 → BET_UP_NORMAL      ($1 bet, ~6-7% candles) │
-  │  P(UP) <= 0.28 → BET_DOWN_NORMAL    ($1 bet, ~6-7% candles) │
-  │  P(UP) <= 0.18 → BET_DOWN_HIGH_CONF ($2 bet, ~1-2% candles) │
+  │  P(UP) >= 0.62 → BET_UP_HIGH_CONF   ($2 bet, ~3-5% candles) │
+  │  P(UP) >= 0.55 → BET_UP_NORMAL      ($1 bet, ~10-15% candles)│
+  │  P(UP) <= 0.45 → BET_DOWN_NORMAL    ($1 bet, ~10-15% candles)│
+  │  P(UP) <= 0.38 → BET_DOWN_HIGH_CONF ($2 bet, ~3-5% candles) │
   │  else          → NO_BET                                       │
   └────────────────────────────────────────────────────────────────┘
 
@@ -44,10 +44,10 @@ logger = structlog.get_logger(__name__)
 class Signal(Enum):
     """All possible signal outputs from the generator."""
     NO_BET             = auto()   # filtered or uncertainty zone
-    BET_UP_NORMAL      = auto()   # P >= 0.72, $1 bet
-    BET_DOWN_NORMAL    = auto()   # P <= 0.28, $1 bet
-    BET_UP_HIGH_CONF   = auto()   # P >= 0.82, $2 bet, no freq cap
-    BET_DOWN_HIGH_CONF = auto()   # P <= 0.18, $2 bet, no freq cap
+    BET_UP_NORMAL      = auto()   # P >= 0.55, $1 bet
+    BET_DOWN_NORMAL    = auto()   # P <= 0.45, $1 bet
+    BET_UP_HIGH_CONF   = auto()   # P >= 0.62, $2 bet, no freq cap
+    BET_DOWN_HIGH_CONF = auto()   # P <= 0.38, $2 bet, no freq cap
 
     @property
     def is_bet(self) -> bool:
@@ -127,9 +127,9 @@ class SignalGenerator:
     """
     Two-tier confidence signal generator with threshold-based classification.
 
-    Thresholds (PRD 7.1):
-      NORMAL tier:    P >= 0.72 (UP) or P <= 0.28 (DOWN)   → $1 bet
-      HIGH_CONF tier: P >= 0.82 (UP) or P <= 0.18 (DOWN)   → $2 bet
+    Thresholds (tuned for BTC 5-min market efficiency):
+      NORMAL tier:    P >= 0.55 (UP) or P <= 0.45 (DOWN)   → $1 bet
+      HIGH_CONF tier: P >= 0.62 (UP) or P <= 0.38 (DOWN)   → $2 bet
 
     Frequency Policy:
       - NO frequency cap on any tier
@@ -138,10 +138,10 @@ class SignalGenerator:
     """
 
     # ── Threshold constants (PRD-defined, not tunable per session) ──
-    THRESHOLD_UP_NORMAL: float   = 0.72
-    THRESHOLD_DOWN_NORMAL: float = 0.28
-    THRESHOLD_UP_HIGH: float     = 0.82
-    THRESHOLD_DOWN_HIGH: float   = 0.18
+    THRESHOLD_UP_NORMAL: float   = 0.55
+    THRESHOLD_DOWN_NORMAL: float = 0.45
+    THRESHOLD_UP_HIGH: float     = 0.60
+    THRESHOLD_DOWN_HIGH: float   = 0.40
 
     def __init__(self):
         self._signal_count: int = 0

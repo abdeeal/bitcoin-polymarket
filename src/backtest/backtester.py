@@ -133,7 +133,7 @@ class Backtester:
         initial_capital: float = 10.0,
         odds: float = 1.90,
         signal_threshold: float = 0.55,
-        high_conf_threshold: float = 0.70,
+        high_conf_threshold: float = 0.60,
     ):
         self.initial_capital = initial_capital
         self.odds = odds

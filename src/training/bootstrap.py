@@ -46,7 +46,7 @@ async def download_historical_candles(days: int = 120) -> list[dict]:
     print(f"\n{'='*60}")
     print(f"  BOOTSTRAP TRAINING — Downloading {days} days of data")
     print(f"  Expected candles: ~{total_candles:,}")
-    print(f"  Date range: {datetime.fromtimestamp(start_time/1000, tz=timezone.utc).strftime('%Y-%m-%d')} → {datetime.fromtimestamp(end_time/1000, tz=timezone.utc).strftime('%Y-%m-%d')}")
+    print(f"  Date range: {datetime.fromtimestamp(start_time/1000, tz=timezone.utc).strftime('%Y-%m-%d')} -> {datetime.fromtimestamp(end_time/1000, tz=timezone.utc).strftime('%Y-%m-%d')}")
     print(f"{'='*60}\n")
     
     # Download BTC candles

@@ -705,8 +705,8 @@ def _heuristic_prob(features: dict) -> float:
       - Volatility-adjusted signal strength
 
     Returns a probability in [0.15, 0.85] range.
-    This is NOT a production model — it's a bootstrap heuristic to
-    make the dashboard useful before ML models are trained.
+    This is NOT a production model — it's a bootstrap heuristic that
+    generates signals when trained ML models are unavailable.
     """
     import math
 

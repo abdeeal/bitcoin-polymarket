@@ -31,11 +31,14 @@ from src.models.calibration import PlattCalibrator
 
 logger = structlog.get_logger(__name__)
 
-# PRD-defined ensemble weights
+# Ensemble weights — rebalanced based on live diagnostics:
+# LightGBM (10 trees): 0.49-0.54 range → low weight until retrained
+# XGBoost (800 trees): 0.33-0.85 range → highest discriminative power
+# LSTM: sequential patterns → moderate weight
 WEIGHTS = {
-    'lgbm': 0.50,
+    'lgbm': 0.25,
     'lstm': 0.35,
-    'xgb': 0.15,
+    'xgb': 0.40,
 }
 
 
@@ -361,11 +364,9 @@ class EnsembleModel:
         xgb_model = XGBModel.load(str(path / 'xgb'))
 
         meta_path = path / 'ensemble_metadata.json'
+        # Always use code-defined WEIGHTS (not saved metadata weights)
+        # to ensure hyperparameter changes take effect without re-saving
         weights = WEIGHTS.copy()
-        if meta_path.exists():
-            with open(meta_path) as f:
-                meta = json.load(f)
-            weights = meta.get('weights', weights)
 
         lstm = LSTMModel.load(str(path / 'lstm'))
         calibrator = PlattCalibrator.load(str(path / 'calibrator'))
